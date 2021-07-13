@@ -5,12 +5,18 @@
 # Copyright (c) 2017 Ryan Collins <rlcollins@g.harvard.edu>
 # Distributed under terms of the MIT license.
 
-#Main plotting function
+library(RMySQL)
+library(plyr)
+library(MASS)
+#library(Rsamtools)
+
+#preloading coverage matrix
 
 preloadCovMatrix <- function (fcovmatrix) {
   as.data.frame(data.table::fread(fcovmatrix, header=T, sep="\t") )
 }
 
+#Main plotting function
 CNViewMod <- function(chr,start,end,            #region to be plotted
                    sampleID,                 #Character vector of IDs of samples to plot
                    covmatrix,                #filepath of a coverage matrix or dataframe object already loaded
@@ -89,12 +95,6 @@ CNViewMod <- function(chr,start,end,            #region to be plotted
     c(v1,v2)[order(c(ord1,ord2))]
   }
 
-  ##Loads required packages##
-  require(RMySQL)
-  require(plyr)
-  require(MASS)
-  require(metap)
-  require(Rsamtools)
 
   ##Parameter cleanup##
   if(!(is.null(highlight))){
@@ -112,7 +112,7 @@ CNViewMod <- function(chr,start,end,            #region to be plotted
   ## use fread on all OS, it is fast
   cov <- NULL
   if (typeof(covmatrix)=="character") {
-    cov <- as.data.frame(data.table::fread(covmatrix, header=T, sep="\t") )
+    cov <- preloadCovMatrix(covmatrix)
   } else { # preloaded cov matrix is given
     cov <- covmatrix
   }
@@ -129,7 +129,7 @@ CNViewMod <- function(chr,start,end,            #region to be plotted
     #cov <- read.table(covmatrix,header=T,sep="\t",check.names=F,comment.char="")
     #cov <- cov[which(cov[,1]==chr & cov[,2]<=end & cov[,3]>=start),]
   #}else{
-  if (F) {
+  if (F) { # not using this code, preloading is better and works on all platforms
     if(normDist!="genome"){
       subcovmatrix <- tempfile()
       if(tabix==T){
@@ -167,9 +167,9 @@ CNViewMod <- function(chr,start,end,            #region to be plotted
     if(tabix==F){
       cov <- read.table(subcovmatrix,header=T,sep="\t",check.names=F,comment.char="")
     }
-  }
 
-  if(quiet==F){cat(" Completed.\n")}
+  }
+  if(quiet==F){cat(" Done.\n")}
 
   ##Drop Columns to Specified Sample Size##
   cov <- cov[,unique(c(1:3,as.vector(sapply(head(unique(c(sampleID,sample(names(cov[,-c(1:3)])))),n=subsample),function(val){which(val==colnames(cov))}))))]
@@ -205,13 +205,13 @@ CNViewMod <- function(chr,start,end,            #region to be plotted
     compression <- 1
   }
   binsize <- compression*obinsize
-  if(quiet==F){cat(paste(prettyNum(binsize,big.mark=",")," bp bins]... ",sep=""))}
+  if(quiet==F){cat(paste(prettyNum(binsize,big.mark=",")," bp bins]...",sep=""))}
   if(compression>1){
     res <- rebin(cov,compression)
   } else {
     res <- cov
   }
-  if(quiet==F){cat(" Complete\n")}
+  if(quiet==F){cat(" Done.\n")}
 
   ##Scale each col within that sample by median##
   if(quiet==F){cat("Performing intra-sample normalization...")}
@@ -221,7 +221,7 @@ CNViewMod <- function(chr,start,end,            #region to be plotted
                                nvals[is.infinite(nvals)] <- NA
                                return(nvals)
                              })
-  if(quiet==F){cat(" Complete\n")}
+  if(quiet==F){cat(" Done.\n")}
 
   ##Normalize each row across all samples##
   if(quiet==F){cat("Performing inter-sample normalization...")}
@@ -236,7 +236,7 @@ CNViewMod <- function(chr,start,end,            #region to be plotted
   res$sd <- apply(res[,4:oncol],1,sd)
   res$median <- apply(res[,4:oncol],1,median)
   res$mad <- apply(res[,4:oncol],1,mad)
-  if(quiet==F){cat(" Complete\n")}
+  if(quiet==F){cat(" Done.\n")}
 
   ##Subset View Window##
   plotSet <- as.data.frame(apply(res[which(as.integer(as.character(res$Start)) <= end+window &
@@ -474,7 +474,7 @@ CNViewMod <- function(chr,start,end,            #region to be plotted
         }
       }
     }
-    if(quiet==F){cat(" Complete\n")}
+    if(quiet==F){cat(" Done.\n")}
 
     ##UCSC plot##
     if(nsamp==1){
@@ -489,7 +489,7 @@ CNViewMod <- function(chr,start,end,            #region to be plotted
                         user='genome',
                         dbname='hg19',
                         host='genome-mysql.cse.ucsc.edu')
-      if(quiet==F){cat(" Complete\n")}
+      if(quiet==F){cat(" Done.\n")}
 
       if(quiet==F){cat("Appending UCSC tracks...")}
       plot(plotSet$Start,
@@ -587,7 +587,7 @@ CNViewMod <- function(chr,start,end,            #region to be plotted
       }
       axis(2,at=c(seq(0.5,length(UCSCtracks)-0.5)),
            labels=UCSCtracks,cex.axis=UCSClabcex,las=1,tick=F)
-      if(quiet==F){cat(" Complete\n")}
+      if(quiet==F){cat(" Done.\n")}
     }
 
     ##Adds X axis##
@@ -626,5 +626,5 @@ CNViewMod <- function(chr,start,end,            #region to be plotted
   #}
 
   ##Finish up##
-  if(quiet==F){cat(paste("\n** FINISHED ON ",date()," **\n\n",sep=""))}
+  if(quiet==F){cat(paste0("** FINISHED ON ",date()," **\n"))}
 }

@@ -1,7 +1,6 @@
-#CNView visualize
+## CNView visualize wrapper
 
-##Install the PDFTOOLS package only once for combining multiple pdfs, then comment it out using "#"
-#install.packages('pdftools', dependencies = TRUE)
+Check for necessary packages and install as needed
 ```{r}
 ##Loads required packages; installs if necessary##
 cran.package.list <- c("readxl","pdftools","RMySQL", "data.table",
@@ -16,53 +15,76 @@ for(i in cran.package.list){
 library(pdftools)
 library(readxl)
 library(metap)
+##Loads required packages##
+library(RMySQL)
+library(plyr)
+library(MASS)
+#require(RMySQL)
+#require(plyr)
+#require(MASS)
+#require(Rsamtools)
+
 ```
+
 ## SPECIFY SOURCE CNVIEW PROGRAM
-#source('CNVIew_FIXED_SS_04_15_2018_main.R')
 ```{r}
+#source('CNVIew_FIXED_SS_04_15_2018_main.R')
+#source('CNView_srv05_orig.R')
 source('CNViewMod.R')
 ```
-#source('CNView_srv05_orig.R')
 
-## SPECIFY CNVs TO VIEW
+## SPECIFY INPUT AND OUTPUT PARAMETERS
+Modify here as needed. Any file can be selected interactively if `file.choose()` function is used, e.g.:
+`regions_file <- file.choose()`
+
+__Note:__ chromosomes must NOT have the 'chr' prefix in both the `regions_file` and `coverage_matrix` input data
+
 ```{r}
-#CNVs = openxlsx::read.xlsx('INPUT_test_1region-chr1-only.xlsx')
-CNVs = as.data.frame(read_xlsx('INPUT_test_18regions.xlsx'))
-#CNVs$chrom=paste0("chr",CNVs$chrom)
-#CNVs = CNVs[!is.na(CNVs[,'To_Visualize']),]
+##-- Excel file with CNV regions to view (must have columns: chrom, start, stop)
+regions_file <- 'INPUT_test_18regions.xlsx'
+#regions_file <- file.choose()
 
-## SPECIFY BRAINS TO VIEW
+##-- SPECIFY BRAINS TO VIEW
 common_brains=c("LIBD61_NeuN_positive", "LIBD62_NeuN_negative")
-#common_brains=c("LIBD61_NeuN_positive", "LIBD62_NeuN_negative")
 #common_brains=c("LIBD08_Cerebellum", "LIBD25_Cerebellum")
-#######----- SPECIFY COVERAGE MATRIX
-#coverage_matrix='UO1_common_test_chr1only.txt'
+
+##-- SPECIFY COVERAGE MATRIX
 coverage_matrix='UO1_merged_CNView_input.txt'
-#coverage_matrix='UO1_common_LIBD61_LIBD62_chr-added-fixed.txt'
-#coverage_matrix='UO1_common_LIBD61_LIBD62_chr-added-fixed-MOVEchrM_to_top_fix2values.txt'
+#coverage_matrix <- file.choose()
 #coverage_matrix='UO1_30x_CNView_input.txt'
-cat('Loading coverage matrix..')
+
+##-- SPECIFY output directory (can be a full path)
+outdir = 'out_UO1_mrg'
+# create this directory if it doesn't exist:
+if (!dir.exists(outdir)){
+ dir.create(outdir)
+}
+
+##-- SPECIFY output file suffix
+out_suffix <- "_CNView_18regions_UO1_merged"
+## the final format is going to be: {outdir}/chr_start_stop_{out_suffix}
+
+```
+
+## Load and process data
+```{r}
+## load the Excel file:
+CNVs = as.data.frame(read_xlsx(regions_file))
+cat('Loading coverage matrix..\n')
 covmat <- preloadCovMatrix(coverage_matrix)
-cat('..loaded.')
 ##  SET output directory
 #dir = '/home/jhshin/work/workspace/UO1/CNView/richard/'
-dir = 'out/'
 #odir <- file.path(getwd(), dir)
-if (!dir.exists(dir)){
- dir.create(dir)
-}
 ```
 
 ```{r}
-## REMEMBER- FINAL SPECIFICATION IS OUTPUT PDF FILENAME- format like:
-## OUT_CNView_CNVsetName_CNViewScriptName_MATRIXname.pdf
-suffix <- "_CNViewMod_18regions_UO1_merged.pdf"
-for (i in 1:length(CNVs$position) ) {
+cnvCount=length(CNVs$position)
+for (i in 1:cnvCount ) {
   rchr=CNVs[i,'chrom']
   rstart=CNVs[i,'start']
   rend=CNVs[i,'stop']
-  output=paste0(dir, 'chr', rchr,"_",rstart,"_",rend, suffix)
-  cat('>>>>> Processing region ', rchr, ':', rstart, '-', rend, '..')
+  outpdf=paste0(outdir, '/', sprintf('%02d',i),'_chr', rchr,"_",rstart,"_",rend, out_suffix, '.pdf')
+  cat('\n>>>> Processing region ', i,' of ',cnvCount, ' : chr',rchr, ':', rstart, '-', rend, '\n')
   CNViewMod(chr=rchr,start=rstart, end = rend,
          #region to be plotted
          sampleID=common_brains,   #Character vector of IDs of samples to plot
@@ -83,74 +105,19 @@ for (i in 1:length(CNVs$position) ) {
          title=NULL,               #option to add custom title. Overrides default
          panelnames=NA,            #optional vector for custom names printed above each plot; only works for multi-sample plots
          legend=T,                 #logical option to plot legend
-         output=output,              #path to output as pdf. If NULL, will plot to active device
+         output=outpdf,              #path to output as pdf. If NULL, will plot to active device
          plot=TRUE,                #logical option to disable plot step; mandatory for output!=NULL
          returnData=FALSE,         #logical option to return df of all normalized coverage values
          quiet=FALSE)
 }
 
-
-#pdf_combine(list.files(path = dir, full.names = TRUE), output = paste0(dir, "joined_PDFs_OUT_test18regions_002.pdf"))
-
-# fails
-#pdf_combine(list.files(path = dir, full.names = TRUE, pattern = "*OUT_test18regions_003.pdf"), output = paste0(dir, "cnview_joined_pdfs_OUT_test18regions_003.pdf"))
-
 ```
-##=========ORIGINAL BELOW==========================================================================================================================================================================
-#CNView visualize
 
-##Install this package only once for combining multiple pdfs, then comment it using "#"
-#install.packages('pdftools', dependencies = TRUE)
-
-
-library(pdftools)
-library(xlsxjars)
-library(readxl)
-library(metap)
-source('CNVIew_FIXED_SS_04_15_2018_main.R')
-#CNVs = openxlsx::read.xlsx('DEL_6call_10000range100000_2.xlsx')
-CNVs = read_xlsx('DEL_6call_10000range100000_2.xlsx')
-CNVs$chrom=paste0("chr",CNVs$chrom)
-CNVs = CNVs[!is.na(CNVs[,'To_Visualize']),]
-
-common_brains=c("LIBD61","LIBD62")
-
-coverage_matrix='     '
-
-#dir = '/home/jhshin/work/workspace/UO1/CNView/richard/'
-dir = 'C:/Users/Richard Straub/Desktop/R-TEST/POSTMORTEM_U01_051821/'
-
-
-for (i in 1:length(CNVs$position) ) {
-output=paste0(dir,CNVs[i,'chrom'],"_",CNVs[i,'start'],"_",CNVs[i,'stop'],"out_run2.pdf")
-CNView(chr=CNVs[i,'chrom'],start=CNVs[i,'start'],end = CNVs[i,'stop'],            #region to be plotted
-                   sampleID=common_brains,                 #Character vector of IDs of samples to plot
-                   covmatrix=coverage_matrix,                #Absolute path of coverage matrix. Header with sample IDs required
-                   compression="optimize",   #compression factor for rebinning, if desired
-                   highlight=NA,             #list of coordinate pairs; intervals to highlight; defaults to query interval; NULL disables
-                   highlightcol="gold",      #vector of colors to shade each highlighted interval
-                   window=NA,                #distance to append to both sides of input interval for viewing; NA = 61.8% on either side
-                   yscale="optimize",        #vector of values to be represented on y axis
-                   normDist=5000000,         #distance outside region to normalize (both sides). Must either be int or "genome"
-                   subsample=200,            #will only load this many samples into memory; useful to reduce runtime & memory reqs for very large cohorts
-                   UCSCtracks=c("Gene",      #append UCSC sequence context information; choose either NULL
-                                "SegDup",    #or up to three among "Gene", "Gap", "RepMask", "blacklist", and "SegDup"
-                                "Gap"),
-                   genesymbols=TRUE,         #print gene symbols below UCSC gene body annotations
-                   probs=TRUE,               #option to add CNV probabilities below each highlighted interval
-                   gcex=1,                   #global scaling for all fonts
-                   title=NULL,               #option to add custom title. Overrides default
-                   panelnames=NA,            #optional vector for custom names printed above each plot; only works for multi-sample plots
-                   legend=T,                 #logical option to plot legend
-                   output=output,              #path to output as pdf. If NULL, will plot to active device
-                   plot=TRUE,                #logical option to disable plot step; mandatory for output!=NULL
-                   noUnix=TRUE,             #logical option to specify a non-unix OS (i.e. no awk, needed to read data)
-                   returnData=FALSE,         #logical option to return df of all normalized coverage values
-                   quiet=FALSE)}
-
-
-
-#pdf_combine(list.files(path = dir, full.names = TRUE), output = paste0(dir, "OUT_DEL_6call_10000range100000_2.pdf"))
-
-## fails
-#pdf_combine(list.files(path = dir, full.names = TRUE, pattern = "*out_cnview_test002new.pdf"), output = paste0(dir, "joined_pdfs_out_cnview_test002new.pdf"))
+Combine pdfs:
+```{r echo=FALSE, message=FALSE, results=FALSE}
+final_pdf=paste0(outdir, '/joined_PDFs', out_suffix,'.pdf')
+cat ("Combining PDFs...")
+fpdf <- pdf_combine(list.files(path = outdir, full.names = TRUE, pattern=paste0('*',out_suffix,'.pdf')), 
+            output =  final_pdf)
+cat(" Done.\nFinal PDF is in:", fpdf ,"\n")
+```
