@@ -65,7 +65,6 @@ if (!dir.exists(outdir)){
 ##-- SPECIFY output file suffix
 out_suffix <- "_CNView_18regions_UO1_merged"
 ## the final format is going to be: {outdir}/chr_start_stop_{out_suffix}
-
 ```
 
 ## Load and process data
@@ -74,9 +73,6 @@ out_suffix <- "_CNView_18regions_UO1_merged"
 CNVs = as.data.frame(read_xlsx(regions_file))
 cat('Loading coverage matrix..\n')
 covmat <- preloadCovMatrix(coverage_matrix)
-##  SET output directory
-#dir = '/home/jhshin/work/workspace/UO1/CNView/richard/'
-#odir <- file.path(getwd(), dir)
 ```
 
 ```{r}
@@ -116,8 +112,8 @@ for (i in 1:cnvCount ) {
 ```
 
 Combine pdfs:
-```{r echo=FALSE, message=FALSE, results=FALSE}
-final_pdf=paste0(outdir, '/joined_PDFs', out_suffix,'.pdf')
+```{r}
+final_pdf=paste0(outdir, '/', gsub('^_','', out_suffix),'.joined.pdf')
 cat ("Combining PDFs...")
 fpdf <- pdf_combine(list.files(path = outdir, full.names = TRUE, pattern=paste0('*',out_suffix,'.pdf')), 
             output =  final_pdf)
