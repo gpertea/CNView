@@ -1,5 +1,7 @@
 ## CNView visualize wrapper
 
+Note: To convert this into an R file, use `knitr::purl("CNView_wrapper.Rmd", output="CNView_wrapper.R", documentation = 2)`
+
 Check for necessary packages and install as needed
 ```{r}
 ##Loads required packages; installs if necessary##
